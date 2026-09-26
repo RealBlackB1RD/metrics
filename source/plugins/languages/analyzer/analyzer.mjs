@@ -87,13 +87,9 @@ export class Analyzer {
   /**Clone a repository */
   async clone(repository) {
     const {repo, branch, path} = this.parse(repository)
-    let token
-
-    if (process.env.GITHUB_ACTIONS) {
-      token = core.getInput("token")
-    }
-
-    let url = /^https?:\/\//.test(repo) ? repo : `https://${token}@github.com/${repo}`
+    const token = process.env.GITHUB_ACTIONS ? core.getInput("token") : ""
+    const auth = token ? `x-access-token:${token}@` : ""
+    let url = /^https?:\/\//.test(repo) ? repo : `https://${auth}github.com/${repo}`
     try {
       this.debug(`cloning https://github.com/${repo} to ${path}`)
       await fs.rm(path, {recursive: true, force: true})

@@ -134,6 +134,16 @@ export default async function({login, graphql, rest, data, q, queries, imports, 
           catch {
             console.debug(`metrics/compute/${login}/base > falling back to last year commits history`)
           }
+          for (const [field, q] of [["totalPullRequestContributions", `author:${login} type:pr`], ["totalIssueContributions", `author:${login} type:issue`], ["totalPullRequestReviewContributions", `reviewed-by:${login} type:pr`]]) {
+            try {
+              console.debug(`metrics/compute/${login}/base > loading user ${field} history`)
+              const {data: {total_count: total = 0}} = await rest.search.issuesAndPullRequests({q})
+              data.user.contributionsCollection[field] = Math.max(total, data.user.contributionsCollection[field] || 0)
+            }
+            catch {
+              console.debug(`metrics/compute/${login}/base > falling back to last year ${field}`)
+            }
+          }
         }
         //Hireable status
         if (hireable) {
@@ -179,6 +189,11 @@ export default async function({login, graphql, rest, data, q, queries, imports, 
         console.debug(`metrics/compute/${login}/base > keeping only ${repositories} ${type}`)
         data.user[type].nodes.splice(repositories)
         console.debug(`metrics/compute/${login}/base > loaded ${data.user[type].nodes.length} ${type}`)
+      }
+      if (data.user.repositoriesContributedTo?.nodes?.length) {
+        const handle = ({owner, name}) => `${owner?.login}/${name}`.toLocaleLowerCase()
+        const known = new Set(data.user.repositories.nodes.map(handle))
+        data.user.repositoriesContributedTo.nodes = data.user.repositoriesContributedTo.nodes.filter(repository => !known.has(handle(repository)))
       }
       //Fetch missing packages count from ghcr.io using REST API (as GraphQL API does not support it yet)
       try {
